@@ -7,21 +7,21 @@ const Database = require('better-sqlite3');
 module.exports = class Sqlite3 extends Transport {
     constructor(options) {
         super(options);
-        
+
         if (!options.hasOwnProperty('db')) {
             throw new Error('"db" is required');
         }
-        
+
         this.db = new Database(options.db);
         this.params = options.params || ['level', 'message'];
         const table = options.table || 'log';
-        
+
         // the 'log' table always has 'id' and 'timestamp'
         const cols = [
-            "id INTEGER PRIMARY KEY", 
+            "id INTEGER PRIMARY KEY",
             "timestamp INTEGER DEFAULT (strftime('%s','now'))"
         ];
-        
+
         // add user-provided columns to the table and create the table
         this.params.forEach(p => cols.push(`${p} TEXT`));
         this.db.prepare(`CREATE TABLE IF NOT EXISTS ${table} (${cols.join(', ')})`).run();
@@ -33,11 +33,23 @@ module.exports = class Sqlite3 extends Transport {
     log(info, callback) {
         const logparams = Object.assign({}, info);
 
+        const columns = this.extractColumns(this.insert.source)
+        columns.forEach(col => {
+            if (!logparams[col]) logparams[col] = null
+        })
+
         setImmediate(() => this.emit('logged', info));
 
         // Perform the writing to the remote service
         this.insert.run(logparams);
 
         callback();
+    }
+
+    extractColumns(sql) {
+        const regex = /\(([^)]+)\)/;
+        const match = sql.match(regex);
+        if (match) return match[1].split(',').map(col => col.trim());
+        return [];
     }
 };
