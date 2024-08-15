@@ -35,6 +35,7 @@ module.exports = class Sqlite3 extends Transport {
 
         const columns = this.extractColumns(this.insert.source)
         columns.forEach(col => {
+            if (logparams[col] instanceof Object) logparams[col] = JSON.stringify(logparams[col])
             if (!logparams[col]) logparams[col] = null
         })
 
